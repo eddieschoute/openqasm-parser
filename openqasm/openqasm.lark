@@ -1,22 +1,74 @@
-?start: sum
-      | NAME "=" sum    -> assign_var
-?sum: product
-    | sum "+" product   -> add
-    | sum "-" product   -> sub
-?product: atom
-    | product "*" atom  -> mul
-    | product "/" atom  -> div
-?atom: NUMBER           -> number
-     | "-" atom         -> neg
-     | NAME             -> var
-     | "(" sum ")"
+start: "OPENQASM" REAL ";" program
+
+program: statement+
+
+statement: decl
+    | gatedecl "{" gop* "}" -> gatedecl
+    | "opaque" ID ("(" idlist? ")") idlist ";" -> opaque
+    | qop
+    | "if" "(" ID "==" NNINTEGER ")" qop
+
+decl: "qreg" ID "[" NNINTEGER "]" ";" -> qregdecl
+    | "creg" ID "[" NNINTEGER "]" ";" -> cregdecl
+
+gatedecl: "gate" ID (idlist | "(" idlist? ")")
+
+// Note that only idlist is allowed within a gate declaration
+gop: standardgate
+    | "barrier" idlist ";" -> barrier
+    | ID ("(" explist? ")")? idlist ";"
+
+standardgate: "U" "(" explist ")" argument ";" -> ugate
+    | "CX" argument "," argument ";" -> cxgate
+
+qop: standardgate
+    | "measure" argument "->" argument ";" -> measure
+    | "reset" argument ";" -> reset
+    | ID ("(" explist? ")")? mixedlist ";"
+
+idlist: ID ("," ID)*
+
+// superset of idlist, also allowing optional array indices
+mixedlist: ID ("[" NNINTEGER "]")? ("," ID "[" NNINTEGER "]")*
+
+argument: ID ("[" NNINTEGER "]")?
+
+explist: exp ("," exp)*
+
+?exp: product
+    | exp "+" product -> add
+    | exp "-" product -> sub
+
+?product: exponent
+    | product "*" exponent -> mul
+    | product "/" exponent -> div
+
+?exponent: atom
+    | exponent "^" atom -> exponent
+
+?atom: REAL
+    | NNINTEGER
+    | "pi" -> pi
+    | ID
+    | "-" atom -> neg
+    | "(" exp ")"
+    | MATHFUN "(" exp ")" -> mathfun
+
+MATHFUN: "sin"
+    | "cos"
+    | "tan"
+    | "exp"
+    | "ln"
+    | "sqrt"
+
 
 
 %import common.DIGIT
-%import common.FLOAT
+%import common.FLOAT -> REAL
 
 NNDIGIT : "1".."9"
-NNINTEGER : NNDIGIT (DIGIT)*
+NNINTEGER : "0"
+    | NNDIGIT (DIGIT)*
 
 //
 // Names (Variables)
@@ -26,7 +78,11 @@ UCASE_LETTER: "A".."Z"
 
 LETTER: UCASE_LETTER | LCASE_LETTER
 
-ID: LCASE_LETTER ("_"|LETTER|DIGIT)*
+// Disallow keywords as identifiers
+// Must be grouped in constant-length groups
+ID: /[a-z][A-Za-z0-9]*(?<!barrier|measure)(?<!opaque)(?<!reset)(?<!U)(?<!CX)/
+
+// ID: LCASE_LETTER ("_"|LETTER|DIGIT)* - "bla"
 
 %import common.WS
 %ignore WS

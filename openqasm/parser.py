@@ -17,5 +17,5 @@ post q[0];
 measure q[0] -> c[0];
 """
 
-calc_parser = Lark(GRAMMAR)
-calc = calc_parser.parse
+openqasm_parser = Lark(GRAMMAR)
+openqasm = openqasm_parser.parse
