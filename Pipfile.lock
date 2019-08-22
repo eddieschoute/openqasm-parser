@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "fc71ea4a4c6ecdd7abc0280c0a63d28ac7d27c9888a35686019f1bf971752bd0"
+            "sha256": "3da04b2c76e41ae3a6cbe85c0cde1f81a8ec252b62e9e3f3a0c8c179d92bb12c"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -17,12 +17,9 @@
     },
     "default": {
         "lark-parser": {
-            "hashes": [
-                "sha256:c4888f6028f6d80f3c515974d2c5e43c9a16ddc935f39af510bd178f76620a61",
-                "sha256:e60a85bf0ecdd938be81f3c2f033f4becf69a221ccbbbc34d68b4dfd853f6d0e"
-            ],
-            "index": "pypi",
-            "version": "==0.7.3"
+            "editable": true,
+            "git": "https://github.com/lark-parser/lark.git",
+            "ref": "b92d15d63f89afd8d91e5dfc91f676894783da6b"
         }
     },
     "develop": {}

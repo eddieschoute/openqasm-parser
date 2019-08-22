@@ -6,7 +6,7 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
-lark-parser = "*"
+lark-parser = {editable = true,git = "https://github.com/lark-parser/lark.git"}
 
 [requires]
 python_version = "3.7"
