@@ -1,40 +1,45 @@
-start: "OPENQASM" REAL ";" program
+// This is the OpenQasm 2.0 grammar
+start: "OPENQASM" "2.0" ";" program
 
 program: statement+
 
-statement: decl
-    | gatedecl "{" gop* "}" -> gatedecl
-    | "opaque" ID ("(" idlist? ")") idlist ";" -> opaque
+?statement: decl
+    | _gatedecl "{" gbody "}" -> gatedef
+    | "opaque" ID ["(" [idlist] ")"] idlist ";" -> opaque
     | qop
-    | "if" "(" ID "==" NNINTEGER ")" qop
+    | "if" "(" ID "==" NNINTEGER ")" qop -> ifstatement
+
+gbody: gop*
 
 decl: "qreg" ID "[" NNINTEGER "]" ";" -> qregdecl
     | "creg" ID "[" NNINTEGER "]" ";" -> cregdecl
 
-gatedecl: "gate" ID (idlist | "(" idlist? ")")
+_gatedecl: "gate" ID (idlist | "(" [idlist] ")")
 
 // Note that only idlist is allowed within a gate declaration
-gop: standardgate
+?gop: standardgate
     | "barrier" idlist ";" -> barrier
-    | ID ("(" explist? ")")? idlist ";"
+    | ID ["(" [explist] ")"] idlist ";" -> gcall
+
 
 standardgate: "U" "(" explist ")" argument ";" -> ugate
     | "CX" argument "," argument ";" -> cxgate
 
-qop: standardgate
+?qop: standardgate
     | "measure" argument "->" argument ";" -> measure
     | "reset" argument ";" -> reset
-    | ID ("(" explist? ")")? mixedlist ";"
+    | ID ["(" [explist] ")"] args ";" -> qcall
 
 idlist: ID ("," ID)*
 
 // superset of idlist, also allowing optional array indices
-mixedlist: ID ("[" NNINTEGER "]")? ("," ID "[" NNINTEGER "]")*
+args: (argument) ("," (argument))*
 
-argument: ID ("[" NNINTEGER "]")?
+argument: ID ["[" NNINTEGER "]"]
 
 explist: exp ("," exp)*
 
+// We split up expression by their order of associativity (lowest-to-highest)
 ?exp: product
     | exp "+" product -> add
     | exp "-" product -> sub
@@ -73,16 +78,10 @@ NNINTEGER : "0"
 //
 // Names (Variables)
 //
-LCASE_LETTER: "a".."z"
-UCASE_LETTER: "A".."Z"
+ID: /[a-z][A-Za-z0-9]*/
 
-LETTER: UCASE_LETTER | LCASE_LETTER
-
-// Disallow keywords as identifiers
-// Must be grouped in constant-length groups
-ID: /[a-z][A-Za-z0-9]*(?<!barrier|measure)(?<!opaque)(?<!reset)(?<!U)(?<!CX)/
-
-// ID: LCASE_LETTER ("_"|LETTER|DIGIT)* - "bla"
+COMMENT: /\/\/.*/
+%ignore COMMENT
 
 %import common.WS
 %ignore WS
