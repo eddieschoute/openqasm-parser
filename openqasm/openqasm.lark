@@ -7,7 +7,7 @@ start: "OPENQASM" real ";" statement+
     | qop
     | "if" "(" id "==" nninteger ")" qop -> ifstatement
     | "include" FILENAME ";" -> include
-    | "barrier" args ";" -> barrier
+    | "barrier" params ";" -> barrier
 
 gbody: gop*
 
@@ -23,17 +23,18 @@ _gatedecl: "gate" id ["(" [idlist] ")"] idlist
     | id ["(" [explist] ")"] idlist ";" -> gcall
 
 
-standardgate: "U" "(" explist ")" argument ";" -> ugate
+?standardgate: "U" "(" explist ")" argument ";" -> ugate
     | "CX" argument "," argument ";" -> cxgate
 
-?qop: standardgate
+qop: standardgate
     | "measure" argument "->" argument ";" -> measure
     | "reset" argument ";" -> reset
-    | id ["(" [explist] ")"] args ";" -> qcall
+    | id ["(" [explist] ")"] params ";" -> qcall
 
 idlist: id ("," id)*
 
 // superset of idlist, also allowing optional array indices
+params: argument ("," (argument))*
 args: argument ("," (argument))*
 
 argument: id ["[" nninteger "]"]

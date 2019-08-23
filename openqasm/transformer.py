@@ -1,13 +1,35 @@
 from pathlib import Path
-from typing import NamedTuple, Any, Optional, Union, Tuple
+from typing import NamedTuple, Any, Optional, Union, Tuple, List, Dict
 import enum
 from enum import Enum
 from decimal import Decimal
 
-from lark import Transformer
+from lark import Transformer, Discard
+
+
+class Qubit:
+    pass
+
+
+class Cbit:
+    pass
+
+
+QuantumRegister = Tuple[Qubit, ...]
+ClassicalRegister = Tuple[Cbit, ...]
+
+
+class Reference(NamedTuple):
+    id: str
+    index: Optional[int]
 
 
 class OpenQasmTransformer(Transformer):
+    def __init__(self):
+        super().__init__()
+        self.qregs: Dict[str, QuantumRegister] = {}
+        self.cregs: Dict[str, ClassicalRegister] = {}
+
     def nninteger(self, t):
         return int(t[0])
 
@@ -17,8 +39,20 @@ class OpenQasmTransformer(Transformer):
     def id(self, t):
         return str(t[0])
 
+    def from_reference(self, ref: Reference):
+        if ref.id in self.qregs:
+            reg = self.qregs[ref.id]
+        else:
+            reg = self.cregs[ref.id]
+        if ref.index:
+            return reg[ref.index]
+        return reg
+
     def argument(self, t):
-        return Reference(id=t[0], index=t[1])
+        return Reference(t[0], t[1])
+
+    def params(self, t):
+        return tuple(self.from_reference(ref) for ref in t)
 
     def args(self, t):
         return tuple(t)
@@ -30,10 +64,14 @@ class OpenQasmTransformer(Transformer):
         return tuple(t)
 
     def qregdecl(self, t):
-        return QregDecl(id=t[0], size=t[1])
+        qreg = tuple(Qubit() for i in range(t[1]))
+        self.qregs[t[0]] = qreg
+        return QregDecl(qreg)
 
     def cregdecl(self, t):
-        return CregDecl(id=t[0], size=t[1])
+        creg = tuple(Cbit() for i in range(t[1]))
+        self.cregs[t[0]] = creg
+        return CregDecl(creg)
 
     def opaque(self, t):
         return Call(*t)
@@ -50,27 +88,39 @@ class OpenQasmTransformer(Transformer):
     def gcall(self, t):
         return Call(name=t[0],
                     params=tuple(t[1]) if t[1] else tuple(),
-                    args=tuple(Reference(id=name, index=None) for name in t[2]))
+                    args=tuple(Reference(name, None) for name in t[2]))
 
     def measure(self, t):
         return Measure(qubits=t[0], cbits=t[1])
 
     def ugate(self, t):
-        return Call(name='U', params=tuple(t[0]), args=tuple(t[1]))
+        return Call(name='U', params=tuple(t[0]), args=(t[1],))
 
     def ifstatement(self, t):
         return IfStatement(register=t[0], equals=t[1], qop=t[2])
+
+    def reset(self, t):
+        return Call(name="reset", params=tuple(), args=(t[0],))
+
+    def qop(self, t):
+        """We lookup references in the qubits and cbits table."""
+        if isinstance(t, Measure):
+            return Measure(qubits=tuple(self.from_reference(ref) for ref in t.qubits),
+                           cbits=tuple(self.from_reference(ref) for ref in t.cbits))
+        # Otherwise it has an .args field
+        op = t[0]
+        return op._replace(args=tuple(self.from_reference(ref) for ref in op.args))
 
     def cxgate(self, t):
         return Call(name='CX', params=tuple(), args=(t[0], t[1]))
 
     def barrier(self, t):
-        return Call(name='barrier', params=tuple(), args=tuple(t[0]))
+        return Call(name='barrier', params=tuple(), args=(t[0]))
 
     def gbarrier(self, t):
         return Call(name='barrier',
                     params=tuple(),
-                    args=tuple(Reference(id=name, index=None) for name in t[0]))
+                    args=tuple(Reference(name, None) for name in t[0]))
 
     def include(self, t):
         return Include(path=Path(t[0]))
@@ -94,7 +144,7 @@ class OpenQasmTransformer(Transformer):
         return Pi()
 
     def reference(self, t):
-        return Reference(id=t, index=None)
+        return Reference(t, None)
 
     def mathfunop(self, t):
         fun = t[0]
@@ -119,7 +169,10 @@ class OpenQasmTransformer(Transformer):
         return Neg(*t)
 
     def start(self, t):
-        return OpenQasmProgram(t[0], tuple(t[1:]))
+        return OpenQasmProgram(version=t[0],
+                               statements=tuple(t[1:]),
+                               qregs=self.qregs,
+                               cregs=self.cregs)
 
 
 class Exp:
@@ -127,40 +180,33 @@ class Exp:
 
 
 class QregDecl(NamedTuple):
-    id: str
-    size: int
+    qreg: QuantumRegister
 
 
 class CregDecl(NamedTuple):
-    id: str
-    size: int
-
-
-class Reference(NamedTuple):
-    id: str
-    index: Optional[int]
+    creg: ClassicalRegister
 
 
 class Call(NamedTuple):
     name: str
     params: Tuple[Exp, ...]
-    args: Tuple[Reference, ...]
+    args: Tuple[Union[QuantumRegister, Qubit], ...]
 
 
 class GateDefinition(NamedTuple):
     id: str
     params: Tuple[Exp, ...]
-    args: Tuple[Reference, ...]
+    args: Tuple[Qubit, ...]
     body: Tuple[Call, ...]
 
 
 class Measure(NamedTuple):
-    qubits: Reference
-    cbits: Reference
+    qubits: Union[QuantumRegister, Qubit]
+    cbits: Union[QuantumRegister, Qubit]
 
 
 class IfStatement(NamedTuple):
-    register: Reference
+    register: ClassicalRegister
     equals: int
     qop: Union[Call, Measure]
 
@@ -218,4 +264,6 @@ class MathFun(Exp, NamedTuple):
 
 class OpenQasmProgram(NamedTuple):
     version: float
+    qregs: Dict[str, QuantumRegister]
+    cregs: Dict[str, ClassicalRegister]
     statements: Tuple[Union[QregDecl, CregDecl, Call, GateDefinition, Measure], ...]
