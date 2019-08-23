@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import NamedTuple, Any, List, Optional, Union
+from typing import NamedTuple, Any, Optional, Union, Tuple
 import enum
 from enum import Enum
 from decimal import Decimal
@@ -21,13 +21,13 @@ class OpenQasmTransformer(Transformer):
         return Reference(id=t[0], index=t[1])
 
     def args(self, t):
-        return t
+        return tuple(t)
 
     def idlist(self, t):
-        return list(t)
+        return tuple(t)
 
     def explist(self, t):
-        return list(t)
+        return tuple(t)
 
     def qregdecl(self, t):
         return QregDecl(id=t[0], size=t[1])
@@ -39,31 +39,38 @@ class OpenQasmTransformer(Transformer):
         return Call(*t)
 
     def gbody(self, t):
-        return t
+        return tuple(t)
 
     def gatedef(self, t):
         return GateDefinition(*t)
 
     def qcall(self, t):
-        return Call(name=t[0], params=t[1] if t[1] else list(), args=t[2])
+        return Call(name=t[0], params=tuple(t[1]) if t[1] else tuple(), args=tuple(t[2]))
 
     def gcall(self, t):
-        return Call(name=t[0], params=t[1] if t[1] else list(), args=[Reference(id=name, index=None) for name in t[2]])
+        return Call(name=t[0],
+                    params=tuple(t[1]) if t[1] else tuple(),
+                    args=tuple(Reference(id=name, index=None) for name in t[2]))
 
     def measure(self, t):
         return Measure(qubits=t[0], cbits=t[1])
 
     def ugate(self, t):
-        return Call(name='U', params=t[0], args=t[1])
+        return Call(name='U', params=tuple(t[0]), args=tuple(t[1]))
 
     def ifstatement(self, t):
         return IfStatement(register=t[0], equals=t[1], qop=t[2])
 
     def cxgate(self, t):
-        return Call(name='CX', params=list(), args=[t[0], t[1]])
+        return Call(name='CX', params=tuple(), args=(t[0], t[1]))
 
     def barrier(self, t):
-        return Call(name='barrier', params=list(), args=t)
+        return Call(name='barrier', params=tuple(), args=tuple(t[0]))
+
+    def gbarrier(self, t):
+        return Call(name='barrier',
+                    params=tuple(),
+                    args=tuple(Reference(id=name, index=None) for name in t[0]))
 
     def include(self, t):
         return Include(path=Path(t[0]))
@@ -109,10 +116,10 @@ class OpenQasmTransformer(Transformer):
         return MathFun(*t)
 
     def neg(self, t):
-        return Neg(t)
+        return Neg(*t)
 
     def start(self, t):
-       return OpenQasmProgram(t[0], t[1:-1])
+        return OpenQasmProgram(t[0], tuple(t[1:]))
 
 
 class Exp:
@@ -133,16 +140,18 @@ class Reference(NamedTuple):
     id: str
     index: Optional[int]
 
+
 class Call(NamedTuple):
     name: str
-    params: List[Exp]
-    args: List[Reference]
+    params: Tuple[Exp, ...]
+    args: Tuple[Reference, ...]
+
 
 class GateDefinition(NamedTuple):
     id: str
-    params: List[Exp]
-    args: List[Reference]
-    body: List[Call]
+    params: Tuple[Exp, ...]
+    args: Tuple[Reference, ...]
+    body: Tuple[Call, ...]
 
 
 class Measure(NamedTuple):
@@ -189,6 +198,7 @@ class Pi(Exp):
     def __repr__(self):
         return "Pi()"
 
+
 class Neg(Exp, NamedTuple):
     exp: Exp
 
@@ -205,7 +215,7 @@ class MathFun(Exp, NamedTuple):
     fun: Op
     exp: Exp
 
+
 class OpenQasmProgram(NamedTuple):
     version: float
-    statements: List[Union[QregDecl,CregDecl,Call, GateDefinition, Measure]]
-
+    statements: Tuple[Union[QregDecl, CregDecl, Call, GateDefinition, Measure], ...]
