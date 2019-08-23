@@ -9,17 +9,19 @@ program: statement+
     | qop
     | "if" "(" ID "==" NNINTEGER ")" qop -> ifstatement
     | "include" FILENAME ";" -> include
+    | "barrier" args ";" -> barrier
 
 gbody: gop*
 
 decl: "qreg" ID "[" NNINTEGER "]" ";" -> qregdecl
     | "creg" ID "[" NNINTEGER "]" ";" -> cregdecl
 
-_gatedecl: "gate" ID (idlist | "(" [idlist] ")")
+// A gate declaration has an optional list of parameters (ids)
+_gatedecl: "gate" ID ["(" [idlist] ")"] idlist
 
 // Note that only idlist is allowed within a gate declaration
 ?gop: standardgate
-    | "barrier" idlist ";" -> barrier
+    | "barrier" idlist ";" -> gbarrier
     | ID ["(" [explist] ")"] idlist ";" -> gcall
 
 

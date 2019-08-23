@@ -17,7 +17,7 @@ post q[0];
 measure q[0] -> c[0];
 """
 
-openqasm_parser = Lark(GRAMMAR, maybe_placeholders=True)
+openqasm_parser = Lark(GRAMMAR, parser='lalr', maybe_placeholders=True)
 openqasm = openqasm_parser.parse
 
 text = """
