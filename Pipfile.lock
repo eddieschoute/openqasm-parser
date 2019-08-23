@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "3da04b2c76e41ae3a6cbe85c0cde1f81a8ec252b62e9e3f3a0c8c179d92bb12c"
+            "sha256": "797fad0136fe60eed2ab3f4d8805c3073b1c4c72aae645917f82e011cbf05a68"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -22,5 +22,13 @@
             "ref": "b92d15d63f89afd8d91e5dfc91f676894783da6b"
         }
     },
-    "develop": {}
+    "develop": {
+        "guppy3": {
+            "hashes": [
+                "sha256:119a998a7bee2c941e3b6c2acd8b83c10cab7ca5d31ac0890d7918f14d0d503f"
+            ],
+            "index": "pypi",
+            "version": "==3.0.3"
+        }
+    }
 }

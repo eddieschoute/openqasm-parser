@@ -4,6 +4,7 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+guppy3 = "*"
 
 [packages]
 lark-parser = {editable = true,git = "https://github.com/lark-parser/lark.git"}
