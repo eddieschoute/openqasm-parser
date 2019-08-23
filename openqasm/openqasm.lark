@@ -8,6 +8,7 @@ program: statement+
     | "opaque" ID ["(" [idlist] ")"] idlist ";" -> opaque
     | qop
     | "if" "(" ID "==" NNINTEGER ")" qop -> ifstatement
+    | "include" FILENAME ";" -> include
 
 gbody: gop*
 
@@ -75,9 +76,8 @@ NNDIGIT : "1".."9"
 NNINTEGER : "0"
     | NNDIGIT (DIGIT)*
 
-//
-// Names (Variables)
-//
+// Since only filenames are quoted by '"', we can capture all groups between them as a filename.
+%import common.ESCAPED_STRING -> FILENAME
 ID: /[a-z][A-Za-z0-9]*/
 
 COMMENT: /\/\/.*/
