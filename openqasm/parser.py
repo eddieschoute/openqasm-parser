@@ -1,5 +1,10 @@
 from lark import Lark
 from pkg_resources import resource_string
+import logging
+
+from openqasm.transformer import OpenQasmTransformer
+
+logging.basicConfig(level=logging.DEBUG)
 
 """The grammar is imported from the openqasm.lark file as a string."""
 GRAMMAR = resource_string(__name__, 'openqasm.lark').decode()
@@ -17,7 +22,7 @@ post q[0];
 measure q[0] -> c[0];
 """
 
-openqasm_parser = Lark(GRAMMAR, parser='lalr', maybe_placeholders=True)
+openqasm_parser = Lark(GRAMMAR, parser='lalr', maybe_placeholders=True, transformer=OpenQasmTransformer())
 openqasm = openqasm_parser.parse
 
 text = """
@@ -40,8 +45,13 @@ if(c0==1) z q[2];
 if(c1==1) x q[2];
 post q[2];
 measure q[2] -> c2[0];
-U(2 * - 3) q;
+U(2 * - sin(3)) q;
 """
+
+# with open('highmem.qasm') as f:
+#     big_text = f.read()
+# res = openqasm(big_text)
 res = openqasm(text)
 print(res)
-print(res.pretty())
+# print(res.pretty())
+# input('bla')

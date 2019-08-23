@@ -1,28 +1,26 @@
 // This is the OpenQasm 2.0 grammar
-start: "OPENQASM" "2.0" ";" program
-
-program: statement+
+start: "OPENQASM" real ";" statement+
 
 ?statement: decl
     | _gatedecl "{" gbody "}" -> gatedef
-    | "opaque" ID ["(" [idlist] ")"] idlist ";" -> opaque
+    | "opaque" id ["(" [idlist] ")"] idlist ";" -> opaque
     | qop
-    | "if" "(" ID "==" NNINTEGER ")" qop -> ifstatement
+    | "if" "(" id "==" nninteger ")" qop -> ifstatement
     | "include" FILENAME ";" -> include
     | "barrier" args ";" -> barrier
 
 gbody: gop*
 
-decl: "qreg" ID "[" NNINTEGER "]" ";" -> qregdecl
-    | "creg" ID "[" NNINTEGER "]" ";" -> cregdecl
+decl: "qreg" id "[" nninteger "]" ";" -> qregdecl
+    | "creg" id "[" nninteger "]" ";" -> cregdecl
 
 // A gate declaration has an optional list of parameters (ids)
-_gatedecl: "gate" ID ["(" [idlist] ")"] idlist
+_gatedecl: "gate" id ["(" [idlist] ")"] idlist
 
 // Note that only idlist is allowed within a gate declaration
 ?gop: standardgate
     | "barrier" idlist ";" -> gbarrier
-    | ID ["(" [explist] ")"] idlist ";" -> gcall
+    | id ["(" [explist] ")"] idlist ";" -> gcall
 
 
 standardgate: "U" "(" explist ")" argument ";" -> ugate
@@ -31,14 +29,14 @@ standardgate: "U" "(" explist ")" argument ";" -> ugate
 ?qop: standardgate
     | "measure" argument "->" argument ";" -> measure
     | "reset" argument ";" -> reset
-    | ID ["(" [explist] ")"] args ";" -> qcall
+    | id ["(" [explist] ")"] args ";" -> qcall
 
-idlist: ID ("," ID)*
+idlist: id ("," id)*
 
 // superset of idlist, also allowing optional array indices
-args: (argument) ("," (argument))*
+args: argument ("," (argument))*
 
-argument: ID ["[" NNINTEGER "]"]
+argument: id ["[" nninteger "]"]
 
 explist: exp ("," exp)*
 
@@ -54,15 +52,15 @@ explist: exp ("," exp)*
 ?exponent: atom
     | exponent "^" atom -> exponent
 
-?atom: REAL
-    | NNINTEGER
+?atom: real
+    | nninteger
     | "pi" -> pi
-    | ID
+    | id -> reference
     | "-" atom -> neg
     | "(" exp ")"
-    | MATHFUN "(" exp ")" -> mathfun
+    | mathfunop "(" exp ")" -> mathfun
 
-MATHFUN: "sin"
+!mathfunop: "sin"
     | "cos"
     | "tan"
     | "exp"
@@ -73,14 +71,17 @@ MATHFUN: "sin"
 
 %import common.DIGIT
 %import common.FLOAT -> REAL
+real: REAL
 
 NNDIGIT : "1".."9"
 NNINTEGER : "0"
     | NNDIGIT (DIGIT)*
+nninteger: NNINTEGER
 
 // Since only filenames are quoted by '"', we can capture all groups between them as a filename.
 %import common.ESCAPED_STRING -> FILENAME
 ID: /[a-z][A-Za-z0-9]*/
+id: ID
 
 COMMENT: /\/\/.*/
 %ignore COMMENT
